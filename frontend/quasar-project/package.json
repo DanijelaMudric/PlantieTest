@@ -1,5 +1,5 @@
 {
-  "name": "quasar-project",
+  "name" : "quasar-project",
   "version": "0.0.1",
   "description": "A Quasar Project",
   "productName": "Quasar App",
@@ -8,7 +8,7 @@
   "scripts": {
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
-    "test": "echo \"No test specified\" && exit 0",
+    "test": "vitest",
     "dev": "quasar dev",
     "build": "quasar build"
   },
@@ -23,13 +23,18 @@
   },
   "devDependencies": {
     "@quasar/app-vite": "^1.9.0",
+    "@vitest/coverage-v8": "^3.2.3",
+    "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.2",
+    "axios-mock-adapter": "^2.1.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-vue": "^9.0.0",
+    "jsdom": "^26.1.0",
     "postcss": "^8.4.14",
     "prettier": "^2.5.1",
-    "vite-plugin-checker": "^0.8.0"
+    "vite-plugin-checker": "^0.8.0",
+    "vitest": "^3.2.3"
   },
   "engines": {
     "node": "^20 || ^18 || ^16",
