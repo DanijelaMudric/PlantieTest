@@ -1,10 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const mysql = require("mysql");
+const mysql = require("mysql"); // Ostavite ovo za stvarnu vezu
 
 const app = express();
-const port = 3000;
 
 app.use(cors({
   origin: '*'
@@ -12,18 +11,19 @@ app.use(cors({
 app.use(bodyParser.json());
 
 // MYSQL VEZA
-const connection = mysql.createConnection({ //Stvaranje veze s bazom dmudric, te ispis njenih podataka
+const connection = mysql.createConnection({
   host: 'ucka.veleri.hr',
   user: 'dmudric',
   password: '11',
   database: 'dmudric',
 });
+
 // VEZA S BAZOM PODATAKA
-connection.connect((err) => {  //Uspostavljanje veze
+connection.connect((err) => {
   if (err) {
-    console.error('Greška u povezivanju sa bazom:', err);  //Ako se dogodi greška ispis greške
+    console.error('Greška u povezivanju sa bazom:', err);
   } else {
-    console.log('Povezano sa bazom podataka!');  //Ako je uspjesno povezana
+    console.log('Povezano sa bazom podataka!');
   }
 });
 
@@ -33,42 +33,43 @@ connection.connect((err) => {  //Uspostavljanje veze
 // ENDPOINT POPIS KORISNIKA
 app.get("/api/korisnici", (request, response) => {
   connection.query("SELECT * FROM Korisnik", (error, results) => {
-    if (error) throw error;
+    if (error) {
+      console.error('Error querying database:', error);
+      return response.status(500).json({ error: 'Internal Server Error' });
+    }
     response.send(results);
   });
 });
 
 // ENDPOINT LogIn korisnika
 app.get('/api/login', (req, res) => {
-  const { ID_korisnika, Lozinka_korisnika } = req.query;  // Correctly retrieve the query parameters
-  console.log('ID_korisnika:', ID_korisnika, 'Lozinka_korisnika:', Lozinka_korisnika); // Correct logging of parameters
+  const { ID_korisnika, Lozinka_korisnika } = req.query;
+  console.log('ID_korisnika:', ID_korisnika, 'Lozinka_korisnika:', Lozinka_korisnika);
 
-  // SQL query to find the user in the database
   const query = 'SELECT Ime_korisnika, Prezime_korisnika FROM Korisnik WHERE ID_korisnika = ? AND Lozinka_korisnika = ?';
   connection.query(query, [ID_korisnika, Lozinka_korisnika], (err, results) => {
     if (err) {
-      console.error('Error querying database:', err); // Log any SQL errors
-      return res.status(500).json({ error: 'Greška pri prijavi korisnika' });  // Internal server error response
+      console.error('Error querying database:', err);
+      return res.status(500).json({ error: 'Greška pri prijavi korisnika' });
     }
 
-    // If user is found in the database
     if (results.length > 0) {
-      const korisnik = results[0];  // Get the first user from the result set
+      const korisnik = results[0];
       res.json({
         success: true,
-        message: `Uspješno ste logirani! Ime i prezime: ${korisnik.Ime_korisnika} ${korisnik.Prezime_korisnika}`  // Correctly access the user data
+        message: `Uspješno ste logirani! Ime i prezime: ${korisnik.Ime_korisnika} ${korisnik.Prezime_korisnika}`
       });
     } else {
-      res.status(404).json({ error: 'Neispravan ID ili lozinka.' });  // If no user is found
+      res.status(404).json({ error: 'Neispravan ID ili lozinka.' });
     }
   });
 });
- // ENDPOINT ZA DOHVAT KOMENTAA
+// ENDPOINT ZA DOHVAT KOMENTAA
 app.get('/api/zahtjevi', (req, res) => {
   const zahtjev = req.query.adminId;
   const query = `SELECT * FROM ZahtjeviZaAdmina`
 
-  connection.query(query, [zahtjev], (err, results) => {
+  connection.query(query, [], (err, results) => {
     if (err) {
       console.error('Error during query execution:', err);
       res.status(500).json({ error: 'Internal Server Error' });
@@ -101,7 +102,7 @@ app.post('/api/zahtjev', (req, res) => {
 //ENDPOINT ZA BRISANJE KOMENTARA
 app.delete('/api/zahtjev/:ID_Zahtjeva', (req, res) => {
   const ID_Zahtjeva = req.params.ID_Zahtjeva;
-  
+
   const query = 'DELETE FROM ZahtjeviZaAdmina WHERE ID_Zahtjeva = ?';
   connection.query(query, [ID_Zahtjeva], (err, results) => {
     if (err) {
@@ -111,53 +112,55 @@ app.delete('/api/zahtjev/:ID_Zahtjeva', (req, res) => {
     res.json({ message: 'Zahtjev uspješno obrisan' });
   });
 });
-  
 
 
 // ENDPOINT POPIS NARUDŽBA
 app.get("/api/narudzbe", (request, response) => {
   connection.query("SELECT * FROM Kosarica", (error, results) => {
-    if (error) throw error;
+    if (error) {
+      console.error('Error querying database:', error);
+      return response.status(500).json({ error: 'Internal Server Error' });
+    }
     response.send(results);
   });
 });
 
- // ENDPOINT LogIn admina
-    app.get('/Admin', (req, res) => {
-      const adminId = req.query.adminId;
-      const query = `SELECT EXISTS(SELECT * FROM Admin WHERE ID_admina = ?) AS id_exists;`
-    
-      connection.query(query, [adminId], (err, results) => {
-        if (err) {
-          console.error('Error during query execution:', err);
-          res.status(500).json({ error: 'Internal Server Error' });
-        } else {
-          res.json(results);
-        }
-      });
-    });
+// ENDPOINT LogIn admina
+app.get('/Admin', (req, res) => {
+  const adminId = req.query.adminId;
+  const query = `SELECT EXISTS(SELECT * FROM Admin WHERE ID_admina = ?) AS id_exists;`
 
-    
-    //ENDPOINT DODAJ KORISNIKA
-    app.post('/api/Korisnik', (req, res) => {
-      const { ime, prezime, email, lozinka, adresa ,telefon } = req.body;
-      const query = `INSERT INTO Korisnik (Ime_korisnika, Prezime_korisnika, Email_korisnika,Lozinka_korisnika, Adresa_korisnika, Kontakt_korisnika) VALUES (?, ?, ?, ?, ?, ?)`;
-      
-      connection.query(query, [ime, prezime, email, lozinka, adresa ,telefon], (err, results) => {
-        if (err) {
-          console.error('Greška pri dodavanju korisnika:', err);
-          res.status(500).json({ error: 'Greška pri dodavanju korisnika' });
-        } else {
-          res.status(200).json({ id: results.insertId, message: 'Korisnik uspješno dodan' });
-        }
-      });
-    });    
-    
+  connection.query(query, [adminId], (err, results) => {
+    if (err) {
+      console.error('Error during query execution:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+
+//ENDPOINT DODAJ KORISNIKA
+app.post('/api/Korisnik', (req, res) => {
+  const { ime, prezime, email, lozinka, adresa, telefon } = req.body;
+  const query = `INSERT INTO Korisnik (Ime_korisnika, Prezime_korisnika, Email_korisnika,Lozinka_korisnika, Adresa_korisnika, Kontakt_korisnika) VALUES (?, ?, ?, ?, ?, ?)`;
+
+  connection.query(query, [ime, prezime, email, lozinka, adresa, telefon], (err, results) => {
+    if (err) {
+      console.error('Greška pri dodavanju korisnika:', err);
+      res.status(500).json({ error: 'Greška pri dodavanju korisnika' });
+    } else {
+      res.status(200).json({ id: results.insertId, message: 'Korisnik uspješno dodan' });
+    }
+  });
+});
+
 
 // API za brisanje korisnika
 app.delete('/api/Korisnik/:ID_korisnika', (req, res) => {
   const ID_korisnika = req.params.ID_korisnika;
-  
+
   const query = 'DELETE FROM Korisnik WHERE ID_korisnika = ?';
   connection.query(query, [ID_korisnika], (err, results) => {
     if (err) {
@@ -167,7 +170,7 @@ app.delete('/api/Korisnik/:ID_korisnika', (req, res) => {
     res.json({ message: 'Korisnik uspješno obrisan' });
   });
 });
-  
+
 
 // Backend API za dodavanje biljke
 app.post("/api/Biljka", (req, res) => {
@@ -179,7 +182,6 @@ app.post("/api/Biljka", (req, res) => {
       console.error('Greška prilikom dodavanja biljke:', err);
       res.status(500).json({ error: 'Greška prilikom dodavanja biljke' });
     } else {
-      // Ako je biljka uspješno dodana, vraćamo odgovor s podacima
       res.status(200).json({ id: results.insertId, message: 'Biljka uspješno dodana' });
     }
   });
@@ -205,7 +207,6 @@ app.delete("/api/biljke/:sifraBiljke", (req, res) => {
 app.post("/api/dodavanjenarudzbe", (req, res) => {
   const { nazivBiljke, velicinaBiljke, kolicina, ID_korisnika, sifraBiljke } = req.body;
 
-  // SQL upit za dodavanje narudžbe
   const query = `
     INSERT INTO Kosarica (nazivBiljke, velicinaBiljke, kolicina, ID_korisnika, sifraBiljke)
     VALUES (?, ?, ?, ?, ?)
@@ -228,9 +229,9 @@ app.post("/api/dodavanjenarudzbe", (req, res) => {
 
 // ENDPOINT - Brisanje narudžbe prema ID-u
 app.delete("/api/brisanjenarudzbe/:ID_Kosarice", (req, res) => {
-  const ID_Kosarice = req.params.ID_Kosarice;  // Correctly reference the URL parameter
+  const ID_Kosarice = req.params.ID_Kosarice;
   const query = 'DELETE FROM Kosarica WHERE ID_Kosarice = ?';
-  
+
   connection.query(query, [ID_Kosarice], (err, results) => {
     if (err) {
       console.error('Greška prilikom brisanja narudžbe:', err);
@@ -248,9 +249,9 @@ app.delete("/api/brisanjenarudzbe/:ID_Kosarice", (req, res) => {
 
 ///KRAJ ADMINA--------------------------------------------------------------------------------------------------------------------------
 // OVO JE OR MOBLINIH API
- //LOG IN ****
- app.post("/api/prijava", async (req, res) => {
-  const { Email_korisnika, Lozinka_korisnika } = req.body; // Prilagođeno vašim podacima
+//LOG IN ****
+app.post("/api/prijava", async (req, res) => {
+  const { Email_korisnika, Lozinka_korisnika } = req.body;
   if (!Email_korisnika || !Lozinka_korisnika) {
     return res.status(400).send("Molimo unesite email i lozinku.");
   }
@@ -272,23 +273,11 @@ app.delete("/api/brisanjenarudzbe/:ID_Kosarice", (req, res) => {
 });
 
 
-// ENDPOINT POPIS KORISNIKA
-app.get("/api/korisnici", (request, response) => {
-  connection.query("SELECT * FROM Korisnik", (error, results) => {
-    if (error) throw error;
-    response.send(results);
-  });
-});
-
-
-
-
-
 // ENDPOINT za dohvat svih biljaka***
 app.get("/api/biljke", (req, res) => {
   const { searchQuery, searchByCategory, searchByName } = req.query;
 
-  let query = "SELECT * FROM Biljka WHERE 1=1"; // Osnovni upit
+  let query = "SELECT * FROM Biljka WHERE 1=1";
   const params = [];
 
   if (searchQuery) {
@@ -308,15 +297,14 @@ app.get("/api/biljke", (req, res) => {
       return res.status(500).json({ error: "Greška prilikom pretrage biljaka" });
     }
 
-    // Dekodiranje hex u URL i dodavanje pune putanje
     const transformedResults = results.map((biljka) => ({
       ...biljka,
       slikaBiljke: biljka.slikaBiljke
-        ? Buffer.from(biljka.slikaBiljke, 'hex').toString('utf-8') // Dekodiranje hex u URL
+        ? Buffer.from(biljka.slikaBiljke, 'hex').toString('utf-8')
         : null,
     }));
 
-    res.json(transformedResults); // Pošaljite transformirane rezultate
+    res.json(transformedResults);
   });
 });
 
@@ -335,45 +323,6 @@ app.get('/api/biljke/:nazivBiljke', (req, res) => {
 });
 
 
-
-//ENDPOINT DODAJ KORISNIKA***
-    app.post('/api/Korisnik', (req, res) => {
-      const { ime, prezime, email, lozinka, adresa ,telefon } = req.body;
-      const query = `INSERT INTO Korisnik (Ime_korisnika, Prezime_korisnika, Email_korisnika,Lozinka_korisnika, Adresa_korisnika, Kontakt_korisnika) VALUES (?, ?, ?, ?, ?, ?)`;
-
-      connection.query(query, [ime, prezime, email, lozinka, adresa ,telefon], (err, results) => {
-        if (err) {
-          console.error('Greška pri dodavanju korisnika:', err);
-          res.status(500).json({ error: 'Greška pri dodavanju korisnika' });
-        } else {
-          res.status(200).json({ id: results.insertId, message: 'Korisnik uspješno dodan' });
-        }
-      });
-    });
-
-// ENDPOINT - dodavanje narudzbe***
-
-app.post("/api/dodavanjenarudzbe", (req, res) => {
-  const { nazivBiljke, velicinaBiljke, kolicina, ID_korisnika, sifraBiljke } = req.body;
-
-  // SQL query to insert the order
-  const query = `
-    INSERT INTO Kosarica (nazivBiljke, velicinaBiljke, kolicina, ID_korisnika, sifraBiljke)
-    VALUES (?, ?, ?, ?, ?)
-  `;
-
-  connection.query(query, [nazivBiljke, velicinaBiljke, kolicina, ID_korisnika, sifraBiljke], (err, results) => {
-    if (err) {
-      console.error('Greška prilikom dodavanja narudžbe:', err);
-      return res.status(500).json({ error: 'Greška prilikom dodavanja narudžbe' });
-    }
-
-    res.status(201).json({
-      message: 'Narudžba uspješno dodana',
-      narudzbaId: results.insertId
-    });
-  });
-});
 
 // ENDPOINT 18 za dobivanje narudžbi korisnika s detaljima o biljkama,korisnik i narudzbi
 app.get('/NarudzbeKorisnika/:korisnikId', (req, res) => {
@@ -396,11 +345,20 @@ app.get('/NarudzbeKorisnika/:korisnikId', (req, res) => {
 
 ///KRAJ ADMINA--------------------------------------------------------------------------------------------------------------------------
 
-app.use((err, req, res, next) => { //Greška u middleware funkciji
+// Middleware za obradu grešaka
+app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).send('Greska u povezanosti!'); //Ispis poruke i greške
+  res.status(500).send('Greska u povezanosti!');
 });
 
-app.listen(3000, () => {
-  console.log('API server running on http://localhost:3000');
-});
+// Dodajte ove dvije linije na KRAJ vaše API datoteke
+// Ovo omogućuje Jestu da uveze 'app' objekt bez pokretanja servera
+module.exports = app;
+
+// Opcionalno: Pokrenite server samo ako se datoteka pokreće direktno
+if (require.main === module) {
+  const port = 3000; // Definirajte port ovdje
+  app.listen(port, () => {
+    console.log(`API server running on http://localhost:${port}`);
+  });
+}
