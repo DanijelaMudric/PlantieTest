@@ -295,7 +295,8 @@ describe('API Endpoints', () => {
   // Test za brisanje biljke
   test('DELETE /api/biljke/:sifraBiljke should delete a plant', async () => {
     
-    mockConnection.query.mockImplnpmementationOnce((sql, params, callback) => {
+    mockConnection.query.mockImplementationOnce((sql, params, callback) => {
+
       callback(null, {
         affectedRows: 1
       });
