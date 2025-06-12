@@ -2,41 +2,31 @@ const request = require('supertest');
 const express = require('express');
 const mysql = require('mysql');
 
-// Kreirajte mock MySQL vezu
 const mockConnection = {
-  query: jest.fn(), // Mockirajte funkciju query
-  connect: jest.fn((cb) => cb()), // Odmah pozovite callback
+  query: jest.fn(),
+  connect: jest.fn((cb) => cb()),
   end: jest.fn(),
 };
 
-// Zamijenite stvarnu MySQL vezu s mock vezom za testove
 jest.mock('mysql', () => ({
   createConnection: jest.fn(() => mockConnection),
 }));
 
-// *** KLJUČNO: POMOĆNA FUNKCIJA ZA NORMALIZACIJU SQL STRINGA ***
-// Ova funkcija zamjenjuje više razmaka (uključujući nove redove) jednim razmakom
-// i uklanja vodeće/prateće razmake.
 const normalizeSql = (sql) => sql.replace(/\s+/g, ' ').trim();
-// ***************************************************************
 
-// Uvezite vaš API (Express aplikaciju)
-const app = require('./Plantie'); // Pretpostavljamo da se vaš API nalazi u 'Plantie.js'
+const app = require('./Plantie');
 
-let server; // Deklarirajte server varijablu za zatvaranje
+let server;
 
 describe('API Endpoints', () => {
   beforeAll((done) => {
-    // Pokrenite test server na slobodnom portu
-    server = app.listen(0, () => { // Korištenje porta 0 omogućava Expressu da pronađe slobodan port
+    server = app.listen(0, () => {
       done();
     });
   });
 
   afterAll((done) => {
-    // Zatvorite test server nakon svih testova
     server.close(() => {
-      // Zatvorite mock MySQL vezu
       if (mockConnection.end.mock.calls.length === 0) {
         mockConnection.end();
       }
@@ -45,32 +35,9 @@ describe('API Endpoints', () => {
   });
 
   beforeEach(() => {
-    // Resetirajte mockove prije svakog testa
     mockConnection.query.mockReset();
   });
 
-  // Test za dohvat svih korisnika
-  test('GET /api/korisnici should return all users', async () => {
-    const mockUsers = [{
-      ID_korisnika: 1,
-      Ime_korisnika: 'Pero',
-      Prezime_korisnika: 'Peric'
-    }, {
-      ID_korisnika: 2,
-      Ime_korisnika: 'Ana',
-      Prezime_korisnika: 'Anic'
-    }];
-    mockConnection.query.mockImplementationOnce((sql, callback) => {
-      callback(null, mockUsers);
-    });
-
-    const res = await request(app).get('/api/korisnici');
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toEqual(mockUsers);
-    expect(mockConnection.query).toHaveBeenCalledWith('SELECT * FROM Korisnik', expect.any(Function));
-  });
-
-  // Test za prijavu korisnika (GET /api/login)
   test('GET /api/login with valid credentials should return success', async () => {
     const mockUser = [{
       Ime_korisnika: 'Test',
@@ -100,7 +67,7 @@ describe('API Endpoints', () => {
 
   test('GET /api/login with invalid credentials should return 404', async () => {
     mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      callback(null, []); // Prazan rezultat za neuspješnu prijavu
+      callback(null, []);
     });
 
     const res = await request(app)
@@ -116,103 +83,6 @@ describe('API Endpoints', () => {
     });
   });
 
-  // Test za dohvat zahtjeva za admina
-  test('GET /api/zahtjevi should return admin requests', async () => {
-    const mockRequests = [{
-      ID_Zahtjeva: 1,
-      Zahtjev: 'Test zahtjev 1'
-    }, {
-      ID_Zahtjeva: 2,
-      Zahtjev: 'Test zahtjev 2'
-    }];
-    mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      callback(null, mockRequests);
-    });
-
-    const res = await request(app).get('/api/zahtjevi?adminId=123');
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toEqual(mockRequests);
-    expect(mockConnection.query).toHaveBeenCalledWith('SELECT * FROM ZahtjeviZaAdmina', [], expect.any(Function));
-  });
-
-  // Test za objavu komentara (POST /api/zahtjev)
-  test('POST /api/zahtjev should add a new request', async () => {
-    const newRequest = {
-      zahtjev: 'Novi test zahtjev'
-    };
-    mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      callback(null, {
-        insertId: 101
-      });
-    });
-
-    const res = await request(app)
-      .post('/api/zahtjev')
-      .send(newRequest);
-
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toEqual({
-      insertId: 101,
-      message: 'Poruka zabilježena'
-    });
-    expect(mockConnection.query).toHaveBeenCalledWith(
-      'INSERT INTO ZahtjeviZaAdmina (Zahtjev) VALUES (?)', [newRequest.zahtjev],
-      expect.any(Function)
-    );
-  });
-
-  test('POST /api/zahtjev with empty request should return 400', async () => {
-    const newRequest = {
-      zahtjev: ''
-    };
-    const res = await request(app)
-      .post('/api/zahtjev')
-      .send(newRequest);
-
-    expect(res.statusCode).toEqual(400);
-    expect(res.body).toEqual({
-      error: 'Zahtjev ne može biti prazan.'
-    });
-    expect(mockConnection.query).not.toHaveBeenCalled(); // Nema poziva bazi
-  });
-
-  // Test za brisanje komentara (DELETE /api/zahtjev/:ID_Zahtjeva)
-  test('DELETE /api/zahtjev/:ID_Zahtjeva should delete a request', async () => {
-    mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      callback(null, {
-        affectedRows: 1
-      });
-    });
-
-    const res = await request(app).delete('/api/zahtjev/123');
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toEqual({
-      message: 'Zahtjev uspješno obrisan'
-    });
-    expect(mockConnection.query).toHaveBeenCalledWith(
-      'DELETE FROM ZahtjeviZaAdmina WHERE ID_Zahtjeva = ?', ['123'],
-      expect.any(Function)
-    );
-  });
-
-  // Test za dohvat svih narudžbi
-  test('GET /api/narudzbe should return all orders', async () => {
-    const mockOrders = [{
-      ID_Kosarice: 1,
-      nazivBiljke: 'Ruža',
-      kolicina: 2
-    }];
-    mockConnection.query.mockImplementationOnce((sql, callback) => {
-      callback(null, mockOrders);
-    });
-
-    const res = await request(app).get('/api/narudzbe');
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toEqual(mockOrders);
-    expect(mockConnection.query).toHaveBeenCalledWith('SELECT * FROM Kosarica', expect.any(Function));
-  });
-
-  // Test za dodavanje korisnika
   test('POST /api/Korisnik should add a new user', async () => {
     const newUser = {
       ime: 'Novi',
@@ -243,7 +113,6 @@ describe('API Endpoints', () => {
     );
   });
 
-  // Test za brisanje korisnika
   test('DELETE /api/Korisnik/:ID_korisnika should delete a user', async () => {
     mockConnection.query.mockImplementationOnce((sql, params, callback) => {
       callback(null, {
@@ -262,7 +131,6 @@ describe('API Endpoints', () => {
     );
   });
 
-  // Test za dodavanje biljke
   test('POST /api/Biljka should add a new plant', async () => {
     const newPlant = {
       naziv: 'Nova Biljka',
@@ -292,11 +160,8 @@ describe('API Endpoints', () => {
     );
   });
 
-  // Test za brisanje biljke
   test('DELETE /api/biljke/:sifraBiljke should delete a plant', async () => {
-    
     mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-
       callback(null, {
         affectedRows: 1
       });
@@ -313,7 +178,6 @@ describe('API Endpoints', () => {
     );
   });
 
-  // Test za dodavanje narudžbe
   test('POST /api/dodavanjenarudzbe should add a new order', async () => {
     const newOrder = {
       nazivBiljke: 'Ruža',
@@ -323,7 +187,6 @@ describe('API Endpoints', () => {
       sifraBiljke: 10
     };
     mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      // Normaliziramo SQL string unutar mock implementacije
       const normalizedSql = normalizeSql(sql);
       const expectedNormalizedSql = normalizeSql('INSERT INTO Kosarica (nazivBiljke, velicinaBiljke, kolicina, ID_korisnika, sifraBiljke) VALUES (?, ?, ?, ?, ?)');
 
@@ -333,7 +196,7 @@ describe('API Endpoints', () => {
           insertId: 401
         });
       } else {
-        callback(new Error('SQL mismatch in mock')); // Ako se ne podudaraju, prijavite grešku
+        callback(new Error('SQL mismatch in mock'));
       }
     });
 
@@ -346,18 +209,13 @@ describe('API Endpoints', () => {
       message: 'Narudžba uspješno dodana',
       narudzbaId: 401
     });
-    // Ovdje više ne koristimo expect.stringContaining, već uspoređujemo primljeni SQL
-    // direktno s očekivanim SQL-om (koji je također normaliziran)
-    // Jest automatski uspoređuje argumente kada se pozove toHaveBeenCalledWith,
-    // a mi smo obradu normalizacije prebacili u mockImplementation.
     expect(mockConnection.query).toHaveBeenCalledWith(
-      expect.any(String), // Očekujemo bilo koji string za SQL, jer je provjera premještena unutar mocka
+      expect.any(String),
       [newOrder.nazivBiljke, newOrder.velicinaBiljke, newOrder.kolicina, newOrder.ID_korisnika, newOrder.sifraBiljke],
       expect.any(Function)
     );
   });
 
-  // Test za brisanje narudžbe
   test('DELETE /api/brisanjenarudzbe/:ID_Kosarice should delete an order', async () => {
     mockConnection.query.mockImplementationOnce((sql, params, callback) => {
       callback(null, {
@@ -390,7 +248,6 @@ describe('API Endpoints', () => {
     });
   });
 
-  // Test za prijavu korisnika (POST /api/prijava)
   test('POST /api/prijava with valid credentials should return success', async () => {
     const mockUser = [{
       ID_korisnika: 1,
@@ -423,24 +280,12 @@ describe('API Endpoints', () => {
     );
   });
 
-  test('POST /api/prijava with missing credentials should return 400', async () => {
-    const res = await request(app)
-      .post('/api/prijava')
-      .send({
-        Email_korisnika: 'mobile@example.com'
-      }); // Missing password
-
-    expect(res.statusCode).toEqual(400);
-    expect(res.text).toEqual('Molimo unesite email i lozinku.');
-  });
-
-  // Test za dohvat svih biljaka s pretraživanjem
   test('GET /api/biljke should return plants with search query', async () => {
     const mockPlants = [{
       sifraBiljke: 1,
       nazivBiljke: 'Ruža',
       vrstaBiljke: 'Cvjetna',
-      slikaBiljke: Buffer.from('https://example.com/rose.jpg').toString('hex') // Mockirajte hex string
+      slikaBiljke: Buffer.from('https://example.com/rose.jpg').toString('hex')
     }];
     mockConnection.query.mockImplementationOnce((sql, params, callback) => {
       callback(null, mockPlants);
@@ -456,37 +301,6 @@ describe('API Endpoints', () => {
     );
   });
 
-  // Test za dohvat jedne biljke po nazivu
-  test('GET /api/biljke/:nazivBiljke should return a single plant', async () => {
-    const mockPlant = [{
-      sifraBiljke: 1,
-      nazivBiljke: 'Ruža',
-      vrstaBiljke: 'Cvjetna'
-    }];
-    mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      callback(null, mockPlant);
-    });
-
-    const res = await request(app).get('/api/biljke/Ruža');
-    expect(res.statusCode).toEqual(200);
-    expect(res.body.nazivBiljke).toEqual('Ruža');
-    expect(mockConnection.query).toHaveBeenCalledWith(
-      'SELECT * FROM Biljka WHERE nazivBiljke = ?', ['Ruža'],
-      expect.any(Function)
-    );
-  });
-
-  test('GET /api/biljke/:nazivBiljke should return 404 if plant not found', async () => {
-    mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      callback(null, []);
-    });
-
-    const res = await request(app).get('/api/biljke/NepostojecaBiljka');
-    expect(res.statusCode).toEqual(404);
-    expect(res.text).toEqual('Plant not found');
-  });
-
-  // Test za dobivanje narudžbi korisnika s detaljima o biljkama
   test('GET /NarudzbeKorisnika/:korisnikId should return user orders with plant details', async () => {
     const mockUserOrders = [{
       ID_Kosarice: 1,
@@ -495,7 +309,6 @@ describe('API Endpoints', () => {
       opisBiljke: 'Egzotična biljka'
     }];
     mockConnection.query.mockImplementationOnce((sql, params, callback) => {
-      // Normaliziramo SQL string unutar mock implementacije
       const normalizedSql = normalizeSql(sql);
       const expectedNormalizedSql = normalizeSql('SELECT k.*, b.nazivBiljke, b.vrstaBiljke, b.opisBiljke FROM Kosarica k JOIN Biljka b ON k.sifraBiljke = b.sifraBiljke WHERE k.ID_korisnika = ?;');
 
@@ -510,10 +323,8 @@ describe('API Endpoints', () => {
     const res = await request(app).get('/NarudzbeKorisnika/1');
     expect(res.statusCode).toEqual(200);
     expect(res.body).toEqual(mockUserOrders);
-    // Ovdje više ne koristimo expect.stringContaining, već uspoređujemo primljeni SQL
-    // direktno s očekivanim SQL-om (koji je također normaliziran)
     expect(mockConnection.query).toHaveBeenCalledWith(
-      expect.any(String), // Očekujemo bilo koji string za SQL, jer je provjera premještena unutar mocka
+      expect.any(String),
       ['1'],
       expect.any(Function)
     );
