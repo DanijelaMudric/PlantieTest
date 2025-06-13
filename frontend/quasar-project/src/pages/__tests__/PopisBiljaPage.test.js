@@ -41,7 +41,7 @@ describe('PopisBiljaPage.vue', () => {
     { sifraBiljke: 1, nazivBiljke: 'Ruža', opisBiljke: 'Crvena ruža', cijena: 5.99, slikaBiljke: 'https://placehold.co/100x100/A0A0A0/FFFFFF?text=Ruza' },
     { sifraBiljke: 2, nazivBiljke: 'Tulipan', opisBiljke: 'Žuti tulipan', cijena: 3.50, slikaBiljke: 'https://placehold.co/100x100/B0B0B0/FFFFFF?text=Tulipan' },
   ];
-  // Test: Provjerava dohvaćanje proizvoda prilikom montiranja komponente
+  // Test: Provjerava dohvaćanje proizvoda prilikom posttave
   it('treba dohvatiti proizvode prilikom montiranja komponente', async () => {
     mock.onGet('http://localhost:3000/api/biljke').reply(200, mockProductsData);
     const wrapper = mountComponentWithQuasar();

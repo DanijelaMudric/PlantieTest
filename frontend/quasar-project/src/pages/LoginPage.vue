@@ -83,7 +83,7 @@ export default {
         email: "",
         password: "",
       },
-      adminId: "", // Dodano za unos admin ID-a
+      adminId: "", 
     };
   },
   methods: {

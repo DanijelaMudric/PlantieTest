@@ -102,7 +102,7 @@ export default {
       try {
         const response = await axios.post("http://localhost:3000/api/Biljka", novaBiljka.value);
         biljke.value.push({
-          sifraBiljke: response.data.id, // Pretpostavka da backend vraća ID
+          sifraBiljke: response.data.id,
           nazivBiljke: novaBiljka.value.naziv,
           vrstaBiljke: novaBiljka.value.vrsta,
           opisBiljke: novaBiljka.value.opis,
@@ -120,7 +120,7 @@ export default {
     const ukloniBiljku = async (idBiljke) => {
       try {
         await axios.delete(`http://localhost:3000/api/biljke/${idBiljke}`);
-        biljke.value = biljke.value.filter(b => b.sifraBiljke !== idBiljke); // Uklonimo biljku iz tablice
+        biljke.value = biljke.value.filter(b => b.sifraBiljke !== idBiljke);
         prikaziUkloniBiljku.value = false;
       } catch (error) {
         console.error("Greška prilikom brisanja biljke:", error);

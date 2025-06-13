@@ -27,8 +27,6 @@ connection.connect((err) => {
   }
 });
 
-////ENDPOINTI ZA ADMINA:-------------------------------------------------------------------------------------------
-
 
 // ENDPOINT POPIS KORISNIKA
 app.get("/api/korisnici", (request, response) => {
@@ -244,9 +242,6 @@ app.delete("/api/brisanjenarudzbe/:ID_Kosarice", (req, res) => {
   });
 });
 
-
-
-
 ///KRAJ ADMINA--------------------------------------------------------------------------------------------------------------------------
 // OVO JE OR MOBLINIH API
 //LOG IN ****
@@ -351,13 +346,10 @@ app.use((err, req, res, next) => {
   res.status(500).send('Greska u povezanosti!');
 });
 
-// Dodajte ove dvije linije na KRAJ vaše API datoteke
-// Ovo omogućuje Jestu da uveze 'app' objekt bez pokretanja servera
 module.exports = app;
 
-// Opcionalno: Pokrenite server samo ako se datoteka pokreće direktno
 if (require.main === module) {
-  const port = 3000; // Definirajte port ovdje
+  const port = 3000; 
   app.listen(port, () => {
     console.log(`API server running on http://localhost:${port}`);
   });
